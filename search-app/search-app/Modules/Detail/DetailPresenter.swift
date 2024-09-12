@@ -40,7 +40,7 @@ final class DetailPresenter: DetailPresenterProtocol {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "MMMM d, yyyy"
                 let formattedDate = dateFormatter.string(from: photoData.createdAt)
-                let image = try await getImageByUrl(url: photoData.urls.full)
+                let image = try await getImageByUrl(url: photoData.urls.regular)
                 let authorImage = try await getImageByUrl(url: photoData.user.profileImage?.medium)
                 let photo = PhotoData(responseData: photoData,
                                       image: image ?? UIImage(),

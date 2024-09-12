@@ -18,6 +18,7 @@ protocol SearchPresenterProtocol {
     func downloadImage(imageURL: String, completion: @escaping ((UIImage, String) -> Void))
     func fetchSearchHistory()
     func openDetailView(index: Int)
+    var sizes: [(Int, Int)] { get set }
 }
 
 final class SearchPresenter: SearchPresenterProtocol {
@@ -32,6 +33,8 @@ final class SearchPresenter: SearchPresenterProtocol {
     private var searchService: SearchServiceProtocol
     private var imageService: ImageServiceProtocol
     private var historyService: HistoryServiceProtocol
+    
+    var sizes: [(Int, Int)] = []
     
     //MARK: - Public properties
     weak var view: SearchViewProtocol?
@@ -57,6 +60,7 @@ final class SearchPresenter: SearchPresenterProtocol {
         if let request = request, request != "" {
             currentPage = 1
             view?.showLoading()
+            sizes = []
             do {
                 try historyService.saveSearchRequest(text: request)
                 Task {
@@ -64,6 +68,7 @@ final class SearchPresenter: SearchPresenterProtocol {
                                                                    orderBy: orderBy, page: 1)
                     photos = data.results
                     totalPage = data.totalPages
+                    photos.forEach({sizes.append(($0.width, $0.height))})
                     view?.showSearchResult()
                 }
             } catch {
@@ -85,6 +90,7 @@ final class SearchPresenter: SearchPresenterProtocol {
                         let data = try await searchService.searchPhoto(query: request,
                                                                        orderBy: orderBy, page: currentPage)
                         photos.append(contentsOf: data.results)
+                        data.results.forEach({sizes.append(($0.width, $0.height))})
                         view?.updateSearchResult()
                     } catch {
                         view?.showError()

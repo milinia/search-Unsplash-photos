@@ -22,15 +22,15 @@ final class SearchViewController: UIViewController {
         static let titleLabelFontSize: CGFloat = 16
         static let searchResultTitleLabelNumberOfLines: Int = 1
         static let hStackSpacing: CGFloat = 10
-        static let cellHeight: CGFloat = 200
     }
     
     //MARK: - Private properties
-    private let presenter: SearchPresenterProtocol
+    private var presenter: SearchPresenterProtocol
     private var searchResultLayout: SearchResultLayout = .twoColumns {
         didSet {
             searchResultLayoutButton.setImage(UIImage(systemName: searchResultLayout.imageName),
                                               for: .normal)
+            layout.numberOfColumns = searchResultLayout.rawValue + 1
         }
     }
     //MARK: - Public properties
@@ -87,9 +87,14 @@ final class SearchViewController: UIViewController {
         return view
     }()
     
+    private lazy var layout: PhotoCollectionLayout = {
+        let layout = PhotoCollectionLayout()
+        layout.numberOfColumns = searchResultLayout.rawValue + 1
+        layout.delegate = self
+        return layout
+    }()
+    
     private lazy var searchResultsCollectionView: UICollectionView = {
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .vertical
         let collection = UICollectionView(frame: CGRect(), collectionViewLayout: layout)
         collection.showsVerticalScrollIndicator = false
         collection.translatesAutoresizingMaskIntoConstraints = false
@@ -219,6 +224,7 @@ final class SearchViewController: UIViewController {
     @objc func searchResultLayoutButtonTapped() {
         searchResultLayout = searchResultLayout == .oneColumn ? .twoColumns : .oneColumn
         searchResultsCollectionView.reloadData()
+        searchResultsCollectionView.collectionViewLayout.invalidateLayout()
     }
 }
 
@@ -303,6 +309,7 @@ extension SearchViewController: SearchHistoryViewDelegate {
 
 extension SearchViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        layout.recalculate()
         presenter.makeFirstSearchRequest(request: textField.text, orderBy: orderBy)
         textField.resignFirstResponder()
         return true
@@ -348,23 +355,16 @@ extension SearchViewController: UICollectionViewDelegate, UICollectionViewDataSo
     }
 }
 
-// MARK: - Implement UICollectionViewDelegateFlowLayout
-extension SearchViewController: UICollectionViewDelegateFlowLayout {
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout,
-                        sizeForItemAt indexPath: IndexPath) -> CGSize {
+// MARK: - Implementation PhotoCollectionLayoutDelegate
+extension SearchViewController: PhotoCollectionLayoutDelegate {
+   
+    func collectionView(_ collectionView: UICollectionView, heightForPhotoAtIndexPath indexPath: IndexPath) -> CGFloat {
+        let width = presenter.sizes[indexPath.item].0
+        let height = presenter.sizes[indexPath.item].1
+        let aspectRatio = CGFloat(height) / CGFloat(width)
         let divider: CGFloat = searchResultLayout == .oneColumn ? 1 : 2
-        let itemHeight = UIConstants.cellHeight
         let itemWidth = (collectionView.bounds.width - UIConstants.contentInset) / divider
-        return CGSize(width: Double(itemWidth), height: Double(itemHeight))
-    }
-
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout,
-                        minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
-        return UIConstants.contentInset
-    }
-
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout,
-                            minimumLineSpacingForSectionAt section: Int) -> CGFloat {
-        return UIConstants.contentInset
+        let itemHeight = itemWidth * aspectRatio
+        return itemHeight
     }
 }
